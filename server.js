@@ -30,13 +30,28 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // ─── EMAIL CONFIG ─────────────────────────────────────────────
-const transporter = nodemailer.createTransport({
-  host: 'smtpout.secureserver.net',
-  port: 465,
-  secure: true,
+// const transporter = nodemailer.createTransport({
+//   host: 'smtpout.secureserver.net',
+//   port: 465,
+//   secure: true,
+//   auth: {
+//     user: 'anum@anumjawaid.org',
+//     pass: 'PeachesGodaddy@898'
+//   }
+// });
+const transporter1 = nodemailer.createTransport({
+  service: 'gmail',
   auth: {
     user: 'anum@anumjawaid.org',
     pass: 'PeachesGodaddy@898'
+  }
+});
+
+const transporter2 = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: 'contact@devvisionaries.org',
+    pass: 'work@vision-12345'
   }
 });
 
@@ -90,35 +105,86 @@ async function sendEmails(filePath, subject, message) {
   let failCount    = 0;
   const failed     = [];
 
+  // for (let i = 0; i < recipients.length; i++) {
+  //   const { email, name } = recipients[i];
+
+
+  //   const mailOptions = {
+  //     from:    successCount < 35 ? 'anum@anumjawaid.org' : 'contact@devvisionaries.org',
+  //     to:      email,
+  //     subject: subject,
+  //     text:    name ? `Hi ${name},\n\n${message}` : message
+  //   };
+
+  //   try {
+  //     await transporter.sendMail(mailOptions);
+  //     successCount++;
+  //     //change email address
+  //     if(successCount === 35){
+  //       transporter.options.auth.user = 'contact@devvisionaries.org';
+  //       transporter.options.auth.pass = 'work@vision-12345';
+  //     }
+  //     console.log(` [${i + 1}/${recipients.length}] Sent to: ${email}`);
+  //   } catch (error) {
+  //     failCount++;
+  //     failed.push(email);
+  //     console.error(`[${i + 1}/${recipients.length}] Failed: ${email} → ${error.message}`);
+  //   }
+
+  //   if (i < recipients.length - 1) await delay(3000);
+  // }
   for (let i = 0; i < recipients.length; i++) {
-    const { email, name } = recipients[i];
+  const { email, name } = recipients[i];
 
-    const mailOptions = {
-      from:    'anum@anumjawaid.org',
-      to:      email,
-      subject: subject,
-      text:    name ? `Hi ${name},\n\n${message}` : message
-    };
+  // First 35 emails use transporter1
+  // Remaining emails use transporter2
+  const currentTransporter = i < 35
+    ? transporter1
+    : transporter2;
 
-    try {
-      await transporter.sendMail(mailOptions);
-      successCount++;
-      console.log(` [${i + 1}/${recipients.length}] Sent to: ${email}`);
-    } catch (error) {
-      failCount++;
-      failed.push(email);
-      console.error(`[${i + 1}/${recipients.length}] Failed: ${email} → ${error.message}`);
-    }
+  const fromEmail = i < 35
+    ? 'anum@anumjawaid.org'
+    : 'contact@devvisionaries.org';
 
-    if (i < recipients.length - 1) await delay(3000);
+  const mailOptions = {
+    from: fromEmail,
+    to: email,
+    subject: subject,
+    text: name
+      ? `Hi ${name},\n\n${message}`
+      : message
+  };
+
+  try {
+    await currentTransporter.sendMail(mailOptions);
+
+    successCount++;
+
+    console.log(
+      `[${i + 1}/${recipients.length}] Sent to: ${email} using ${fromEmail}`
+    );
+
+  } catch (error) {
+    failCount++;
+    failed.push(email);
+
+    console.error(
+      `[${i + 1}/${recipients.length}] Failed: ${email} → ${error.message}`
+    );
   }
+
+  // Delay between emails
+  if (i < recipients.length - 1) {
+    await delay(3000);
+  }
+}
 
   console.log('\n─────────────────────────────────');
   console.log(`📊 DONE! Total: ${recipients.length}`);
   console.log(`✅ Success: ${successCount}`);
   console.log(`❌ Failed:  ${failCount}`);
   if (failed.length > 0) console.log('Failed emails:', failed.join(', '));
-  console.log('─────────────────────────────────\n');
+  console.log('\n');
 }
 
 // ─── JOB SCHEDULER: EVERY DAY AT 18:00 PM ─────────────────────
@@ -127,7 +193,7 @@ cron.schedule('0 18 * * *', () => {
   sendEmails(savedFilePath, savedSubject, savedMessage);
 });
 
-console.log('📅 Scheduler ready — emails will run every day at 9:00 AM');
+console.log('📅 Scheduler ready — emails will run every day at 6:00 PM');
 
 // ─── ROUTE: HOME ──────────────────────────────────────────────
 app.get('/', (req, res) => {
